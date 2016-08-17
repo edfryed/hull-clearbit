@@ -1,6 +1,8 @@
 import express from "express";
 import path from "path";
+import devMode from "./dev-mode";
 
+import handleProspect from "./handlers/prospect";
 import handleUserUpdate from "./handlers/user-update";
 import handleBatchUpdate from "./handlers/batch-update";
 import handleClearbitWebhook from "./handlers/clearbit-webhook";
@@ -8,10 +10,12 @@ import handleClearbitWebhook from "./handlers/clearbit-webhook";
 import bodyParser from "body-parser";
 
 module.exports = function Server(options = {}) {
-  const { port, Hull, hostSecret } = options;
+  const { devMode: dev, port, Hull, hostSecret } = options;
   const { BatchHandler, NotifHandler, Routes, Middlewares } = Hull;
 
   const app = express();
+
+  if (dev) app.use(devMode());
 
   app.use(express.static(path.resolve(__dirname, "..", "assets")));
 
@@ -40,6 +44,12 @@ module.exports = function Server(options = {}) {
     groupTraits: false,
     handler: handleBatchUpdate(options)
   }));
+
+  app.post("/prospect",
+    bodyParser.urlencoded(),
+    Middlewares.hullClient({ hostSecret }),
+    handleProspect(options)
+  );
 
   app.post("/notify", NotifHandler({
     groupTraits: false,
